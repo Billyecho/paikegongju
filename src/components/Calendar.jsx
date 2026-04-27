@@ -21,7 +21,7 @@ import { useCoursesContext } from '../hooks/useCoursesContext'
 import { useStudentsContext } from '../hooks/useStudentsContext'
 import CourseBlock from './CourseBlock'
 
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 8)
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 8)
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 export default function Calendar({ onCourseClick }) {

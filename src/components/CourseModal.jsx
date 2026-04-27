@@ -128,7 +128,7 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
                 })}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-800"
               >
-                {Array.from({ length: 15 }, (_, i) => i + 8).map(h => (
+                {Array.from({ length: 14 }, (_, i) => i + 8).map(h => (
                   <option key={h} value={h}>{h}:00</option>
                 ))}
               </select>
@@ -142,7 +142,7 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
                 onChange={(e) => setFormData({ ...formData, endHour: parseInt(e.target.value) })}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-800"
               >
-                {Array.from({ length: 15 }, (_, i) => i + 9).map(h => (
+                {Array.from({ length: 13 }, (_, i) => i + 9).map(h => (
                   <option key={h} value={h}>{h}:00</option>
                 ))}
               </select>
