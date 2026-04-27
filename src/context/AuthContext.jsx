@@ -1,0 +1,73 @@
+import { useEffect, useState } from 'react'
+import { AuthContext } from './authContextValue'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
+
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(isSupabaseConfigured)
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      return undefined
+    }
+
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return
+      if (error) {
+        console.error('Failed to get Supabase session', error)
+      }
+      setSession(data.session ?? null)
+      setLoading(false)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setLoading(false)
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const signInWithEmail = async (email) => {
+    if (!supabase) {
+      throw new Error('Supabase 尚未配置')
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    })
+
+    if (error) throw error
+  }
+
+  const signOut = async () => {
+    if (!supabase) return
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        isConfigured: isSupabaseConfigured,
+        session,
+        user: session?.user ?? null,
+        loading,
+        signInWithEmail,
+        signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
