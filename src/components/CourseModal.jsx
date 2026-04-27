@@ -16,7 +16,8 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
     date: format(defaultDate, 'yyyy-MM-dd'),
     startHour: defaultStartHour,
     endHour: defaultEndHour,
-    notes: course?.notes || ''
+    notes: course?.notes || '',
+    status: course?.status || 'scheduled'
   })
 
   // Refresh students when modal opens to get latest
@@ -38,7 +39,8 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
       subject: formData.subject,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
-      notes: formData.notes
+      notes: formData.notes,
+      status: formData.status
     })
   }
 
@@ -146,6 +148,33 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
                   <option key={h} value={h}>{h}:00</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              课程状态
+            </label>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+              {[
+                { value: 'scheduled', label: '待上课' },
+                { value: 'completed', label: '已完成' }
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: option.value })}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
+                    formData.status === option.value
+                      ? option.value === 'completed'
+                        ? 'bg-emerald-500 text-white shadow-sm'
+                        : 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-600'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
           </div>
 

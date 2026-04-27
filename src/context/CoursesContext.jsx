@@ -65,7 +65,7 @@ export function CoursesProvider({ children }) {
       start_time: course.startTime,
       end_time: course.endTime,
       notes: course.notes || '',
-      status: 'scheduled',
+      status: course.status || 'scheduled',
       created_at: now,
       updated_at: now,
     }

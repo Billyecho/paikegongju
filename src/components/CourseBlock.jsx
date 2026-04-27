@@ -1,6 +1,6 @@
 import { useDraggable } from '@dnd-kit/core'
 
-export default function CourseBlock({ course, studentName, style, onClick }) {
+export default function CourseBlock({ course, studentName, style, onClick, compact = false }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: course.id
   })
@@ -12,7 +12,7 @@ export default function CourseBlock({ course, studentName, style, onClick }) {
       }
     : style
 
-  // Color based on subject or random
+  const isCompleted = course.status === 'completed'
   const colors = [
     'from-blue-500 to-blue-600',
     'from-indigo-500 to-indigo-600',
@@ -22,6 +22,7 @@ export default function CourseBlock({ course, studentName, style, onClick }) {
     'from-rose-500 to-rose-600'
   ]
   const colorIndex = course.subject ? course.subject.charCodeAt(0) % colors.length : 0
+  const gradientClass = isCompleted ? 'from-emerald-500 to-teal-600' : colors[colorIndex]
 
   return (
     <div
@@ -29,12 +30,21 @@ export default function CourseBlock({ course, studentName, style, onClick }) {
       {...listeners}
       {...attributes}
       onClick={onClick}
-      className={`absolute left-1 right-1 bg-gradient-to-br ${colors[colorIndex]} text-white px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-all overflow-hidden`}
+      className={`absolute bg-gradient-to-br ${gradientClass} text-white rounded-lg shadow-sm transition-all overflow-hidden select-none touch-none cursor-grab active:cursor-grabbing hover:shadow-md ${
+        compact ? 'px-2 py-1' : 'px-2.5 py-1.5'
+      }`}
       style={dragStyle}
     >
-      <div className="font-medium text-sm truncate leading-tight">{course.subject}</div>
-      <div className="text-xs opacity-85 truncate mt-0.5">{studentName}</div>
-      {course.notes && (
+      <div className="flex items-start justify-between gap-2">
+        <div className={`font-medium truncate leading-tight ${compact ? 'text-xs' : 'text-sm'}`}>{course.subject}</div>
+        {isCompleted && (
+          <span className="shrink-0 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide">
+            完成
+          </span>
+        )}
+      </div>
+      <div className={`truncate opacity-85 ${compact ? 'mt-0 text-[11px]' : 'mt-0.5 text-xs'}`}>{studentName}</div>
+      {!compact && course.notes && (
         <div className="text-xs opacity-70 truncate mt-0.5 leading-tight">{course.notes}</div>
       )}
     </div>
