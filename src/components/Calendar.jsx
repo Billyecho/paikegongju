@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   format,
   startOfWeek,
@@ -25,11 +25,26 @@ const HOURS = Array.from({ length: 14 }, (_, i) => i + 8)
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
 export default function Calendar({ onCourseClick }) {
-  const [view, setView] = useState('week') // 'week' | 'day' | 'month'
+  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week'))
   const [currentDate, setCurrentDate] = useState(new Date())
   const [activeCourse, setActiveCourse] = useState(null)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const { courses, updateCourse } = useCoursesContext()
   const { students } = useStudentsContext()
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      setView((currentView) => {
+        if (mobile && currentView === 'week') return 'day'
+        return currentView
+      })
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -112,10 +127,10 @@ export default function Calendar({ onCourseClick }) {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex flex-col h-full bg-slate-50">
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold text-slate-800">
+        <div className="bg-white border-b border-slate-200 px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-3 sm:justify-start sm:gap-4">
+              <h2 className="text-base font-semibold text-slate-800 sm:text-lg">
                 {getHeaderText()}
               </h2>
               <button
@@ -126,12 +141,12 @@ export default function Calendar({ onCourseClick }) {
               </button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4">
               {/* View Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
                 {[
                   { key: 'day', label: '日' },
-                  { key: 'week', label: '周' },
+                  ...(!isMobile ? [{ key: 'week', label: '周' }] : []),
                   { key: 'month', label: '月' }
                 ].map(item => (
                   <button
@@ -149,7 +164,7 @@ export default function Calendar({ onCourseClick }) {
               </div>
 
               {/* Nav Buttons */}
-              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
                 <button
                   onClick={handlePrev}
                   className="p-2 rounded-md hover:bg-white hover:shadow-sm transition-all text-slate-600"
@@ -240,7 +255,7 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName }) {
   }
 
   return (
-    <div className="min-w-[800px]">
+    <div className="min-w-[680px] md:min-w-[800px]">
       <div className="flex border-b border-slate-200 bg-white sticky top-0 z-10 shadow-sm">
         <div className="w-16 shrink-0" />
         {weekDays.map((day, i) => {
@@ -328,19 +343,19 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div className="mx-auto max-w-4xl p-2 sm:p-4">
+      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm sm:rounded-2xl">
         {/* Day Header */}
-        <div className={`px-6 py-4 border-b border-slate-100 ${isSameDay(currentDate, today) ? 'bg-blue-50' : ''}`}>
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isSameDay(currentDate, today) ? 'bg-blue-500' : 'bg-slate-100'}`}>
+        <div className={`border-b border-slate-100 px-4 py-4 sm:px-6 ${isSameDay(currentDate, today) ? 'bg-blue-50' : ''}`}>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${isSameDay(currentDate, today) ? 'bg-blue-500' : 'bg-slate-100'}`}>
               <span className={`text-lg font-bold ${isSameDay(currentDate, today) ? 'text-white' : 'text-slate-600'}`}>
                 {format(currentDate, 'd')}
               </span>
             </div>
             <div>
               <div className="text-sm text-slate-500">{format(currentDate, 'EEEE', { locale: zhCN })}</div>
-              <div className="text-xl font-bold text-slate-800">{format(currentDate, 'M月d日')}</div>
+              <div className="text-lg font-bold text-slate-800 sm:text-xl">{format(currentDate, 'M月d日')}</div>
             </div>
             <div className="ml-auto text-right">
               <div className="text-sm text-slate-500">{dayCourses.length} 节课</div>
@@ -350,7 +365,7 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName }) {
 
         {/* Time Grid */}
         <div className="relative" style={{ height: HOURS.length * 60 }}>
-          <div className="absolute left-0 w-20 bg-slate-50 border-r border-slate-100">
+          <div className="absolute left-0 w-14 border-r border-slate-100 bg-slate-50 sm:w-20">
             {HOURS.map(hour => (
               <div key={hour} className="h-[60px] flex items-start justify-end pr-3 pt-1">
                 <span className="text-xs font-medium text-slate-400">{hour}:00</span>
@@ -358,7 +373,7 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName }) {
             ))}
           </div>
 
-          <div className="ml-20 relative">
+          <div className="relative ml-14 sm:ml-20">
             {HOURS.map(hour => (
               <DroppableTimeSlot
                 key={hour}
@@ -404,12 +419,12 @@ function MonthView({ currentDate, courses, onCourseClick }) {
   })
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div className="mx-auto max-w-6xl p-2 sm:p-4">
+      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm sm:rounded-2xl">
         {/* Weekday Headers */}
         <div className="flex border-b border-slate-100 bg-slate-50">
           {WEEKDAYS.map((day, i) => (
-            <div key={i} className="flex-1 py-3 text-center text-sm font-medium text-slate-500">
+            <div key={i} className="flex-1 py-2 text-center text-xs font-medium text-slate-500 sm:py-3 sm:text-sm">
               {day}
             </div>
           ))}
@@ -437,7 +452,7 @@ function MonthView({ currentDate, courses, onCourseClick }) {
                     <div
                       key={course.id}
                       onClick={() => onCourseClick(course)}
-                      className="text-xs px-1.5 py-1 bg-blue-500 text-white rounded truncate cursor-pointer hover:bg-blue-600 transition-colors"
+                      className="cursor-pointer truncate rounded bg-blue-500 px-1 py-1 text-[10px] text-white transition-colors hover:bg-blue-600 sm:px-1.5 sm:text-xs"
                     >
                       {course.subject}
                     </div>

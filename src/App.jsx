@@ -106,29 +106,29 @@ function AppContent() {
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+      <header className="bg-white border-b border-slate-200 px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">排课工具</h1>
-              <p className="text-xs text-slate-500">{user?.email || '轻松管理课程安排'}</p>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-slate-800 sm:text-xl">排课工具</h1>
+              <p className="truncate text-xs text-slate-500">{user?.email || '轻松管理课程安排'}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             <button
               onClick={handleSignOut}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-all"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-800"
             >
               退出登录
             </button>
             <button
               onClick={() => setShowStudentList(true)}
-              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-all flex items-center gap-2"
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-800"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -137,7 +137,7 @@ function AppContent() {
             </button>
             <button
               onClick={handleAddCourse}
-              className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-sm flex items-center gap-2"
+              className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-indigo-700"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -149,15 +149,15 @@ function AppContent() {
       </header>
 
       {hasLocalBackup && isCloudEmpty && (
-        <div className="border-b border-amber-200 bg-amber-50 px-6 py-3">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-            <p className="text-sm text-amber-900">
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <p className="text-sm text-amber-900 sm:max-w-3xl">
               检测到这台设备里还有旧的本地数据，可以一键导入到 Supabase，之后手机和电脑都会看到同一份内容。
             </p>
             <button
               onClick={handleImportLocalData}
               disabled={importing}
-              className="shrink-0 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300"
+              className="w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-amber-300 sm:w-auto"
             >
               {importing ? '导入中...' : '导入本地数据'}
             </button>

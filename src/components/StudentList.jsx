@@ -51,9 +51,9 @@ export default function StudentList({ onClose, onStudentSaved }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm sm:items-center">
+      <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:mx-4 sm:max-w-lg sm:rounded-2xl">
+        <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 sm:items-center sm:px-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,12 +68,12 @@ export default function StudentList({ onClose, onStudentSaved }) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleAdd}
-              className="px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-sm flex items-center gap-1"
+              className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-indigo-700"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              新增学生
+              <span className="hidden sm:inline">新增学生</span>
             </button>
             <button
               onClick={onClose}
@@ -102,7 +102,7 @@ export default function StudentList({ onClose, onStudentSaved }) {
               {students.map(student => (
                 <div
                   key={student.id}
-                  className="flex items-center justify-between p-4 border border-slate-100 rounded-xl hover:bg-slate-50 hover:border-slate-200 transition-all cursor-pointer group"
+                  className="group flex items-center justify-between rounded-xl border border-slate-100 p-4 transition-all hover:border-slate-200 hover:bg-slate-50"
                   onClick={() => handleEdit(student)}
                 >
                   <div className="flex items-center gap-3">

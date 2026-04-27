@@ -15,9 +15,9 @@ export default function StudentModal({ student, onSave, onDelete, onClose, busy 
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 backdrop-blur-sm sm:items-center">
+      <div className="w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:mx-4 sm:max-w-md sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <h2 className="text-lg font-bold text-slate-800">
             {isEdit ? '编辑学生' : '新增学生'}
           </h2>
@@ -32,7 +32,7 @@ export default function StudentModal({ student, onSave, onDelete, onClose, busy 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6">
           {/* Name */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -78,30 +78,29 @@ export default function StudentModal({ student, onSave, onDelete, onClose, busy 
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
             {isEdit && (
               <button
                 type="button"
                 onClick={onDelete}
                 disabled={busy}
-                className="px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 sm:mr-auto"
               >
                 删除学生
               </button>
             )}
-            <div className="flex-1" />
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+              className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200"
             >
               取消
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-sm"
+              className="rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-indigo-700"
             >
               {busy ? '保存中...' : isEdit ? '保存修改' : '添加学生'}
             </button>
