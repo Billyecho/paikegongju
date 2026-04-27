@@ -205,7 +205,7 @@ export default function App() {
 }
 
 function AppShell() {
-  const { isConfigured, session, loading } = useAuthContext()
+  const { isConfigured, session, loading, isRecovery } = useAuthContext()
 
   if (!isConfigured) {
     return <SetupScreen />
@@ -219,6 +219,10 @@ function AppShell() {
         </div>
       </div>
     )
+  }
+
+  if (isRecovery) {
+    return <AuthGate />
   }
 
   if (!session) {
