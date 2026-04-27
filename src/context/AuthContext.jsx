@@ -5,7 +5,6 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase'
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(isSupabaseConfigured)
-  const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -20,15 +19,13 @@ export function AuthProvider({ children }) {
         console.error('Failed to get Supabase session', error)
       }
       setSession(data.session ?? null)
-      setIsRecovery(window.location.hash.includes('type=recovery'))
       setLoading(false)
     })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession)
-      setIsRecovery(event === 'PASSWORD_RECOVERY')
       setLoading(false)
     })
 
@@ -51,62 +48,6 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
-  const signUpWithPassword = async (email, password) => {
-    if (!supabase) {
-      throw new Error('Supabase 尚未配置')
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    })
-
-    if (error) throw error
-    return data
-  }
-
-  const sendPasswordReset = async (email) => {
-    if (!supabase) {
-      throw new Error('Supabase 尚未配置')
-    }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    })
-
-    if (error) throw error
-  }
-
-  const ensureActiveSession = async () => {
-    if (!supabase) {
-      throw new Error('Supabase 尚未配置')
-    }
-
-    const { data, error } = await supabase.auth.getSession()
-    if (error) throw error
-    if (data.session) return data.session
-
-    const refreshed = await supabase.auth.refreshSession()
-    if (refreshed.error) throw refreshed.error
-    if (refreshed.data.session) return refreshed.data.session
-
-    throw new Error('当前登录会话已失效，请先重新登录，再设置密码。')
-  }
-
-  const updatePassword = async (password) => {
-    await ensureActiveSession()
-
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) throw error
-    setIsRecovery(false)
-    if (window.location.hash.includes('type=recovery')) {
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
-    }
-  }
-
   const signOut = async () => {
     if (!supabase) return
     const { error } = await supabase.auth.signOut()
@@ -120,11 +61,7 @@ export function AuthProvider({ children }) {
         session,
         user: session?.user ?? null,
         loading,
-        isRecovery,
         signInWithPassword,
-        signUpWithPassword,
-        sendPasswordReset,
-        updatePassword,
         signOut,
       }}
     >

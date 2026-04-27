@@ -1,69 +1,31 @@
 import { useState } from 'react'
 import { useAuthContext } from '../hooks/useAuthContext'
 
+const allowedEmail = import.meta.env.VITE_ALLOWED_EMAIL || 'gaoshuangquan@outlook.com'
+
 export default function AuthGate() {
-  const { isRecovery, signInWithPassword, signUpWithPassword, sendPasswordReset, updatePassword } = useAuthContext()
-  const [mode, setMode] = useState('login')
-  const [email, setEmail] = useState('')
+  const { signInWithPassword } = useAuthContext()
+  const [email, setEmail] = useState(allowedEmail)
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
     setError('')
-    setMessage('')
 
     try {
-      if (isRecovery) {
-        if (password !== confirmPassword) {
-          throw new Error('两次输入的密码不一致')
-        }
-        await updatePassword(password)
-        setMessage('密码已经更新，现在可以直接用邮箱和密码登录。')
-        setPassword('')
-        setConfirmPassword('')
-      } else if (mode === 'login') {
-        await signInWithPassword(email, password)
-      } else if (mode === 'register') {
-        if (password !== confirmPassword) {
-          throw new Error('两次输入的密码不一致')
-        }
-        const result = await signUpWithPassword(email, password)
-        if (result.session) {
-          setMessage('注册成功，已经自动登录。')
-        } else {
-          setMessage('注册成功，请去邮箱完成确认后再登录。')
-        }
-      } else {
-        await sendPasswordReset(email)
-        setMessage('密码重置邮件已发送，请去邮箱打开链接设置新密码。')
+      if (email.trim().toLowerCase() !== allowedEmail.toLowerCase()) {
+        throw new Error('这个系统只允许指定账号登录，请使用固定邮箱。')
       }
+      await signInWithPassword(email.trim(), password)
     } catch (submitError) {
       setError(submitError.message || '提交失败')
     } finally {
       setSubmitting(false)
     }
   }
-
-  const title = isRecovery
-    ? '设置新密码'
-    : mode === 'login'
-      ? '邮箱密码登录'
-      : mode === 'register'
-        ? '注册账号'
-        : '重置密码'
-
-  const intro = isRecovery
-    ? '你已经通过邮件进入密码设置页面，保存后就可以直接用邮箱和密码登录。'
-    : mode === 'login'
-      ? '以后你只需要输入邮箱和密码，不必再每次去邮箱点登录链接。'
-      : mode === 'register'
-        ? '如果你想新建一个邮箱密码账号，可以在这里注册。'
-        : '如果你之前只用过邮箱链接登录，或者忘了密码，可以在这里发一封重置邮件。'
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_40%,_#f8fafc)] px-4 py-10">
@@ -78,12 +40,12 @@ export default function AuthGate() {
               你的排课工具现在可以在手机、平板和电脑上共用
             </h1>
             <p className="mt-6 max-w-lg text-base leading-7 text-slate-300">
-              这套页面已经准备好走邮箱密码登录和云端同步。用同一个账号登录后，课程和学生信息会跟着账号走，不再绑在某一台设备上。
+              这套页面现在只保留一个固定账号登录。你用同一组邮箱和密码登录后，课程和学生信息会跟着账号走，不再绑在某一台设备上。
             </p>
             <div className="mt-10 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl bg-white/8 p-5">
                 <div className="text-sm font-semibold text-white">登录方式</div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">邮箱 + 密码为主，也支持通过邮件重置密码。</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">固定邮箱 + 密码登录，不再开放注册和邮件重置。</p>
               </div>
               <div className="rounded-2xl bg-white/8 p-5">
                 <div className="text-sm font-semibold text-white">数据同步</div>
@@ -94,83 +56,35 @@ export default function AuthGate() {
 
           <section className="rounded-[28px] border border-slate-200 bg-white px-6 py-8 shadow-xl shadow-slate-200/60 sm:px-8">
             <div className="mb-8">
-              {!isRecovery && (
-                <div className="mb-5 flex rounded-2xl bg-slate-100 p-1">
-                  {[
-                    { key: 'login', label: '登录' },
-                    { key: 'register', label: '注册' },
-                    { key: 'reset', label: '重置密码' },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => {
-                        setMode(item.key)
-                        setMessage('')
-                        setError('')
-                      }}
-                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                        mode === item.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">{intro}</p>
+              <h2 className="text-2xl font-bold text-slate-900">单账号登录</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                这个系统现在只保留一个固定邮箱登录入口。密码如需修改，请在 Supabase 后台的用户管理里手动更新。
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {!isRecovery && (
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">邮箱</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    required
-                  />
-                </div>
-              )}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">固定邮箱</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600 outline-none"
+                  required
+                />
+              </div>
 
-              {(mode !== 'reset' || isRecovery) && (
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">密码</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder={isRecovery ? '设置新密码' : '输入密码'}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    required
-                  />
-                </div>
-              )}
-
-              {(mode === 'register' || isRecovery) && (
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">确认密码</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="再输入一次密码"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    required
-                  />
-                </div>
-              )}
-
-              {message && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {message}
-                </div>
-              )}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">密码</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="输入密码"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  required
+                />
+              </div>
 
               {error && (
                 <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -183,15 +97,7 @@ export default function AuthGate() {
                 disabled={submitting}
                 className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {submitting
-                  ? '处理中...'
-                  : isRecovery
-                    ? '保存新密码'
-                    : mode === 'login'
-                      ? '登录'
-                      : mode === 'register'
-                        ? '注册并继续'
-                        : '发送重置邮件'}
+                {submitting ? '登录中...' : '登录'}
               </button>
             </form>
           </section>

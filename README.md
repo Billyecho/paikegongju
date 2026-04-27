@@ -1,13 +1,13 @@
 # 排课工具
 
-辅导老师课程管理工具，支持日/周/月视图切换、拖拽改时、邮箱登录和多设备同步。
+辅导老师课程管理工具，支持日/周/月视图切换、拖拽改时、单账号登录和多设备同步。
 
 ## 技术栈
 
 - React + Vite
 - TailwindCSS
 - @dnd-kit（拖拽功能）
-- Supabase（邮箱登录 + 云端数据）
+- Supabase（单账号认证 + 云端数据）
 - Vercel（线上部署）
 
 ## 本地运行
@@ -36,7 +36,7 @@ npm run dev
 
 ### 数据存储
 - 使用 Supabase 存储学生与课程数据
-- 同一邮箱登录后，手机和电脑访问同一份数据
+- 固定账号登录后，手机和电脑访问同一份数据
 - 首次登录后可以把旧 localStorage 数据导入云端
 
 ## Supabase 配置
@@ -49,6 +49,7 @@ npm run dev
 ```bash
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_ALLOWED_EMAIL=gaoshuangquan@outlook.com
 ```
 
 5. 在 Authentication -> URL Configuration 中，把站点 URL 设成你的 Vercel 域名
@@ -72,7 +73,7 @@ src/
 │   ├── StudentsContext.jsx  # 学生状态管理
 │   └── CoursesContext.jsx   # 课程状态管理
 ├── components/
-│   ├── AuthGate.jsx      # 邮箱登录页
+│   ├── AuthGate.jsx      # 单账号登录页
 │   ├── Calendar.jsx     # 日历视图（日/周/月）
 │   ├── CourseBlock.jsx   # 课程块组件
 │   ├── CourseModal.jsx   # 课程弹窗
