@@ -14,9 +14,10 @@ import SetupScreen from './components/SetupScreen'
 function AppContent() {
   const [courseModal, setCourseModal] = useState(null)
   const [showStudentList, setShowStudentList] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [busy, setBusy] = useState(false)
   const [importing, setImporting] = useState(false)
-  const { user, signOut } = useAuthContext()
+  const { user, signOut, updatePassword } = useAuthContext()
   const { courses, loading: coursesLoading, addCourse, updateCourse, deleteCourse, importCourses } = useCoursesContext()
   const { students, loading: studentsLoading, refresh: refreshStudents, importStudents } = useStudentsContext()
 
@@ -104,6 +105,19 @@ function AppContent() {
     }
   }
 
+  const handleUpdatePassword = async (password) => {
+    setBusy(true)
+    try {
+      await updatePassword(password)
+      setShowPasswordModal(false)
+      alert('密码已经设置完成，之后可以直接用邮箱和密码登录。')
+    } catch (error) {
+      alert(error.message || '设置密码失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 py-4">
@@ -120,6 +134,12 @@ function AppContent() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-all"
+            >
+              设置密码
+            </button>
             <button
               onClick={handleSignOut}
               className="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-all"
@@ -190,6 +210,15 @@ function AppContent() {
       {showStudentList && (
         <StudentList onClose={() => setShowStudentList(false)} onStudentSaved={handleStudentSaved} />
       )}
+
+      {showPasswordModal && (
+        <PasswordModal
+          email={user?.email}
+          busy={busy}
+          onSave={handleUpdatePassword}
+          onClose={() => setShowPasswordModal(false)}
+        />
+      )}
     </div>
   )
 }
@@ -235,5 +264,98 @@ function AppShell() {
         <AppContent />
       </CoursesProvider>
     </StudentsProvider>
+  )
+}
+
+function PasswordModal({ email, busy, onSave, onClose }) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+
+    if (password.length < 6) {
+      setError('密码至少需要 6 位')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('两次输入的密码不一致')
+      return
+    }
+
+    await onSave(password)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">设置密码</h2>
+            <p className="mt-1 text-sm text-slate-500">{email}</p>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={busy}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">新密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">确认密码</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-200"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {busy ? '保存中...' : '保存密码'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
