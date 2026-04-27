@@ -57,7 +57,7 @@ export default function Calendar({ onCourseClick }) {
       activationConstraint: { distance: 8 }
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 180, tolerance: 10 }
+      activationConstraint: { delay: 120, tolerance: 14 }
     })
   )
 
@@ -269,21 +269,21 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
   }
 
   return (
-    <div className={isMobile ? 'min-w-[720px]' : 'min-w-[680px] md:min-w-[800px]'}>
+    <div className={isMobile ? 'min-w-0' : 'min-w-[680px] md:min-w-[800px]'}>
       <div className="sticky top-0 z-10 flex border-b border-slate-200 bg-white shadow-sm">
-        <div className="w-16 shrink-0" />
+        <div className={`${isMobile ? 'w-12' : 'w-16'} shrink-0`} />
         {weekDays.map((day, index) => {
           const isToday = isSameDay(day, today)
 
           return (
             <div
               key={index}
-              className={`flex-1 border-l border-slate-100 py-3 text-center ${isToday ? 'bg-blue-50' : ''}`}
+              className={`min-w-0 flex-1 border-l border-slate-100 ${isMobile ? 'py-2' : 'py-3'} text-center ${isToday ? 'bg-blue-50' : ''}`}
             >
-              <div className="text-xs font-medium tracking-wide text-slate-500">
+              <div className={`${isMobile ? 'text-[11px]' : 'text-xs'} font-medium tracking-wide text-slate-500`}>
                 {format(day, 'EEE', { locale: zhCN })}
               </div>
-              <div className={`mt-1 text-xl font-bold ${isToday ? 'text-blue-600' : 'text-slate-800'}`}>
+              <div className={`${isMobile ? 'mt-0.5 text-lg' : 'mt-1 text-xl'} font-bold ${isToday ? 'text-blue-600' : 'text-slate-800'}`}>
                 {format(day, 'd')}
               </div>
             </div>
@@ -292,15 +292,15 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
       </div>
 
       <div className="relative bg-white">
-        <div className="absolute left-0 z-10 w-16 bg-white">
+        <div className={`absolute left-0 z-10 ${isMobile ? 'w-12' : 'w-16'} bg-white`}>
           {HOURS.map((hour) => (
-            <div key={hour} className="flex items-start justify-end pr-3 pt-1" style={{ height: hourHeight }}>
-              <span className="text-xs font-medium text-slate-400">{hour}:00</span>
+            <div key={hour} className={`flex items-start justify-end ${isMobile ? 'pr-2' : 'pr-3'} pt-1`} style={{ height: hourHeight }}>
+              <span className={`${isMobile ? 'text-[11px]' : 'text-xs'} font-medium text-slate-400`}>{hour}:00</span>
             </div>
           ))}
         </div>
 
-        <div className="ml-16 flex">
+        <div className={`flex ${isMobile ? 'ml-12' : 'ml-16'}`}>
           {weekDays.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd')
             const dayCourses = coursesForWeek.filter((course) => isSameDay(new Date(course.startTime), day))
@@ -330,7 +330,12 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
                       compact={isMobile}
                       course={course}
                       studentName={getStudentName(course.studentId)}
-                      style={{ top: pos.top, height: Math.max(pos.height, isMobile ? 26 : 30) }}
+                      style={{
+                        top: pos.top,
+                        height: Math.max(pos.height, isMobile ? 26 : 30),
+                        left: isMobile ? 2 : 4,
+                        right: isMobile ? 2 : 4
+                      }}
                       onClick={() => onCourseClick(course)}
                     />
                   )

@@ -8,6 +8,8 @@ export default function CourseBlock({ course, studentName, style, onClick, compa
   const dragStyle = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 30,
+        willChange: 'transform',
         ...style
       }
     : style
