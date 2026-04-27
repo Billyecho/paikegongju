@@ -80,10 +80,24 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
-  const updatePassword = async (password) => {
+  const ensureActiveSession = async () => {
     if (!supabase) {
       throw new Error('Supabase 尚未配置')
     }
+
+    const { data, error } = await supabase.auth.getSession()
+    if (error) throw error
+    if (data.session) return data.session
+
+    const refreshed = await supabase.auth.refreshSession()
+    if (refreshed.error) throw refreshed.error
+    if (refreshed.data.session) return refreshed.data.session
+
+    throw new Error('当前登录会话已失效，请先重新登录，再设置密码。')
+  }
+
+  const updatePassword = async (password) => {
+    await ensureActiveSession()
 
     const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
