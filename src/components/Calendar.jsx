@@ -374,21 +374,21 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeig
   return (
     <div className="mx-auto max-w-4xl p-2 sm:p-4">
       <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm sm:rounded-2xl">
-        <div className={`border-b border-slate-100 px-4 py-4 sm:px-6 ${isSameDay(currentDate, today) ? 'bg-blue-50' : ''}`}>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${
+        <div className={`border-b border-slate-100 px-3 py-3 sm:px-6 sm:py-4 ${isSameDay(currentDate, today) ? 'bg-blue-50' : ''}`}>
+          <div className="flex items-center gap-2.5 sm:gap-4">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-lg sm:h-12 sm:w-12 sm:rounded-xl ${
               isSameDay(currentDate, today) ? 'bg-blue-500' : 'bg-slate-100'
             }`}>
-              <span className={`text-lg font-bold ${isSameDay(currentDate, today) ? 'text-white' : 'text-slate-600'}`}>
+              <span className={`text-base font-bold sm:text-lg ${isSameDay(currentDate, today) ? 'text-white' : 'text-slate-600'}`}>
                 {format(currentDate, 'd')}
               </span>
             </div>
             <div>
-              <div className="text-sm text-slate-500">{format(currentDate, 'EEEE', { locale: zhCN })}</div>
-              <div className="text-lg font-bold text-slate-800 sm:text-xl">{format(currentDate, 'M月d日', { locale: zhCN })}</div>
+              <div className="text-xs text-slate-500 sm:text-sm">{format(currentDate, 'EEEE', { locale: zhCN })}</div>
+              <div className="text-base font-bold text-slate-800 sm:text-xl">{format(currentDate, 'M月d日', { locale: zhCN })}</div>
             </div>
             <div className="ml-auto text-right">
-              <div className="text-sm text-slate-500">{dayCourses.length} 节课</div>
+              <div className="text-xs text-slate-500 sm:text-sm">{dayCourses.length} 节课</div>
             </div>
           </div>
         </div>

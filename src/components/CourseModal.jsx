@@ -45,8 +45,8 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm sm:items-center">
-      <div className="max-h-[92vh] w-full overflow-auto rounded-t-3xl bg-white shadow-2xl sm:mx-4 sm:max-w-md sm:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overscroll-none bg-slate-900/60 backdrop-blur-sm sm:items-center">
+      <div className="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:mx-4 sm:max-w-md sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <h2 className="text-lg font-bold text-slate-800">
             {isEdit ? '编辑课程' : '新增课程'}
@@ -62,7 +62,7 @@ export default function CourseModal({ course, onSave, onDelete, onClose, busy = 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto overscroll-contain p-5 pb-7 touch-pan-y sm:p-6">
           {/* Student Selection */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
