@@ -62,7 +62,7 @@ function AppContent() {
   }
 
   const handleDeleteCourse = async () => {
-    if (courseModal?.id && confirm('确定要删除这个课程吗？')) {
+    if (courseModal?.id && confirm('确定要删除这节课程吗？')) {
       setBusy(true)
       try {
         await deleteCourse(courseModal.id)
@@ -116,7 +116,9 @@ function AppContent() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-bold text-slate-800 sm:text-xl">排课工具</h1>
-              <p className="truncate text-xs text-slate-500">{user?.email || '轻松管理课程安排'}</p>
+              <p className="truncate text-xs text-slate-500">
+                {user?.email || user?.username || '轻松管理课程安排'}
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
@@ -152,7 +154,7 @@ function AppContent() {
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <p className="text-sm text-amber-900 sm:max-w-3xl">
-              检测到这台设备里还有旧的本地数据，可以一键导入到 Supabase，之后手机和电脑都会看到同一份内容。
+              检测到这台设备里还有旧的本地数据，可以一键导入到 CloudBase 云端，之后手机和电脑都会看到同一份内容。
             </p>
             <button
               onClick={handleImportLocalData}
@@ -195,13 +197,11 @@ function AppContent() {
 }
 
 export default function App() {
-  const shell = (
+  return (
     <AuthProvider>
       <AppShell />
     </AuthProvider>
   )
-
-  return shell
 }
 
 function AppShell() {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { CoursesContext } from './coursesContextValue'
 import { useAuthContext } from '../hooks/useAuthContext'
-import { supabase } from '../lib/supabase'
+import { cloudbaseDb, getCloudbaseUserId } from '../lib/cloudbase'
 
 function mapCourseRow(row) {
   return {
-    id: row.id,
+    id: row._id,
     studentId: row.student_id,
     subject: row.subject,
     startTime: row.start_time,
@@ -17,13 +17,24 @@ function mapCourseRow(row) {
   }
 }
 
+function unwrapSingleDocument(result) {
+  if (Array.isArray(result?.data)) return result.data[0] ?? null
+  return result?.data ?? null
+}
+
+function getInsertedDocumentId(result) {
+  return result?.id || result?._id || result?.data?.id || result?.data?._id || ''
+}
+
 export function CoursesProvider({ children }) {
   const { user } = useAuthContext()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
 
   const loadCourses = useCallback(() => {
-    if (!supabase || !user) {
+    const userId = getCloudbaseUserId(user)
+
+    if (!cloudbaseDb || !userId) {
       setCourses([])
       setLoading(false)
       return Promise.resolve([])
@@ -31,13 +42,13 @@ export function CoursesProvider({ children }) {
 
     setLoading(true)
 
-    return supabase
-      .from('courses')
-      .select('*')
-      .order('start_time', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) throw error
-        const nextCourses = data.map(mapCourseRow)
+    return cloudbaseDb
+      .collection('courses')
+      .where({ user_id: userId })
+      .orderBy('start_time', 'asc')
+      .get()
+      .then((result) => {
+        const nextCourses = (result.data || []).map(mapCourseRow)
         setCourses(nextCourses)
         return nextCourses
       })
@@ -55,11 +66,12 @@ export function CoursesProvider({ children }) {
   }, [loadCourses])
 
   const addCourse = async (course) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    const userId = getCloudbaseUserId(user)
+    if (!cloudbaseDb || !userId) throw new Error('当前未登录')
+
     const now = new Date().toISOString()
     const payload = {
-      id: crypto.randomUUID?.() ?? Date.now().toString(),
-      user_id: user.id,
+      user_id: userId,
       student_id: course.studentId,
       subject: course.subject,
       start_time: course.startTime,
@@ -69,19 +81,25 @@ export function CoursesProvider({ children }) {
       created_at: now,
       updated_at: now,
     }
-    const { data, error } = await supabase.from('courses').insert(payload).select('*').single()
-    if (error) throw error
+
+    const createResult = await cloudbaseDb.collection('courses').add(payload)
+    const docId = getInsertedDocumentId(createResult)
+    const detailResult = await cloudbaseDb.collection('courses').doc(docId).get()
+    const nextCourse = mapCourseRow(unwrapSingleDocument(detailResult))
+
     setCourses((current) =>
-      [...current, mapCourseRow(data)].sort((left, right) => new Date(left.startTime) - new Date(right.startTime))
+      [...current, nextCourse].sort((left, right) => new Date(left.startTime) - new Date(right.startTime))
     )
-    return data
+    return nextCourse
   }
 
   const updateCourse = async (id, updates) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    if (!cloudbaseDb || !getCloudbaseUserId(user)) throw new Error('当前未登录')
+
     const payload = {
       updated_at: new Date().toISOString(),
     }
+
     if (updates.studentId !== undefined) payload.student_id = updates.studentId
     if (updates.subject !== undefined) payload.subject = updates.subject
     if (updates.startTime !== undefined) payload.start_time = updates.startTime
@@ -89,37 +107,32 @@ export function CoursesProvider({ children }) {
     if (updates.notes !== undefined) payload.notes = updates.notes || ''
     if (updates.status !== undefined) payload.status = updates.status
 
-    const { data, error } = await supabase
-      .from('courses')
-      .update(payload)
-      .eq('id', id)
-      .select('*')
-      .single()
-    if (error) throw error
+    await cloudbaseDb.collection('courses').doc(id).update(payload)
+    const detailResult = await cloudbaseDb.collection('courses').doc(id).get()
+    const nextCourse = mapCourseRow(unwrapSingleDocument(detailResult))
 
-    const nextCourse = mapCourseRow(data)
     setCourses((current) =>
       current
         .map((course) => (course.id === id ? nextCourse : course))
         .sort((left, right) => new Date(left.startTime) - new Date(right.startTime))
     )
-    return data
+    return nextCourse
   }
 
   const deleteCourse = async (id) => {
-    if (!supabase || !user) throw new Error('当前未登录')
-    const { error } = await supabase.from('courses').delete().eq('id', id)
-    if (error) throw error
+    if (!cloudbaseDb || !getCloudbaseUserId(user)) throw new Error('当前未登录')
+    await cloudbaseDb.collection('courses').doc(id).remove()
     setCourses((current) => current.filter((course) => course.id !== id))
   }
 
   const importCourses = async (localCourses) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    const userId = getCloudbaseUserId(user)
+    if (!cloudbaseDb || !userId) throw new Error('当前未登录')
     if (!localCourses.length) return 0
 
     const payload = localCourses.map((course) => ({
-      id: course.id || crypto.randomUUID?.() || Date.now().toString(),
-      user_id: user.id,
+      _id: course.id || crypto.randomUUID?.() || Date.now().toString(),
+      user_id: userId,
       student_id: course.studentId,
       subject: course.subject,
       start_time: course.startTime,
@@ -130,8 +143,10 @@ export function CoursesProvider({ children }) {
       updated_at: course.updatedAt || course.createdAt || new Date().toISOString(),
     }))
 
-    const { error } = await supabase.from('courses').upsert(payload)
-    if (error) throw error
+    await Promise.all(
+      payload.map(({ _id, ...course }) => cloudbaseDb.collection('courses').doc(_id).set(course))
+    )
+
     await loadCourses()
     return payload.length
   }

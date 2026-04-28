@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { StudentsContext } from './studentsContextValue'
 import { useAuthContext } from '../hooks/useAuthContext'
-import { supabase } from '../lib/supabase'
+import { cloudbaseDb, getCloudbaseUserId } from '../lib/cloudbase'
 
 function mapStudentRow(row) {
   return {
-    id: row.id,
+    id: row._id,
     name: row.name,
     grade: row.grade,
     phone: row.phone ?? '',
     createdAt: row.created_at,
   }
+}
+
+function unwrapSingleDocument(result) {
+  if (Array.isArray(result?.data)) return result.data[0] ?? null
+  return result?.data ?? null
+}
+
+function getInsertedDocumentId(result) {
+  return result?.id || result?._id || result?.data?.id || result?.data?._id || ''
 }
 
 export function StudentsProvider({ children }) {
@@ -19,7 +28,9 @@ export function StudentsProvider({ children }) {
   const [loading, setLoading] = useState(false)
 
   const loadStudents = useCallback(() => {
-    if (!supabase || !user) {
+    const userId = getCloudbaseUserId(user)
+
+    if (!cloudbaseDb || !userId) {
       setStudents([])
       setLoading(false)
       return Promise.resolve([])
@@ -27,13 +38,13 @@ export function StudentsProvider({ children }) {
 
     setLoading(true)
 
-    return supabase
-      .from('students')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) throw error
-        const nextStudents = data.map(mapStudentRow)
+    return cloudbaseDb
+      .collection('students')
+      .where({ user_id: userId })
+      .orderBy('created_at', 'desc')
+      .get()
+      .then((result) => {
+        const nextStudents = (result.data || []).map(mapStudentRow)
         setStudents(nextStudents)
         return nextStudents
       })
@@ -51,61 +62,67 @@ export function StudentsProvider({ children }) {
   }, [loadStudents])
 
   const addStudent = async (student) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    const userId = getCloudbaseUserId(user)
+    if (!cloudbaseDb || !userId) throw new Error('当前未登录')
+
     const payload = {
-      id: crypto.randomUUID?.() ?? Date.now().toString(),
-      user_id: user.id,
+      user_id: userId,
       name: student.name,
       grade: student.grade,
       phone: student.phone || '',
+      created_at: new Date().toISOString(),
     }
-    const { data, error } = await supabase.from('students').insert(payload).select('*').single()
-    if (error) throw error
-    setStudents((current) => [mapStudentRow(data), ...current])
-    return data
+
+    const createResult = await cloudbaseDb.collection('students').add(payload)
+    const docId = getInsertedDocumentId(createResult)
+    const detailResult = await cloudbaseDb.collection('students').doc(docId).get()
+    const nextStudent = mapStudentRow(unwrapSingleDocument(detailResult))
+
+    setStudents((current) => [nextStudent, ...current])
+    return nextStudent
   }
 
   const updateStudent = async (id, updates) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    if (!cloudbaseDb || !getCloudbaseUserId(user)) throw new Error('当前未登录')
+
     const payload = {
       name: updates.name,
       grade: updates.grade,
       phone: updates.phone || '',
     }
-    const { data, error } = await supabase
-      .from('students')
-      .update(payload)
-      .eq('id', id)
-      .select('*')
-      .single()
-    if (error) throw error
-    const nextStudent = mapStudentRow(data)
+
+    await cloudbaseDb.collection('students').doc(id).update(payload)
+    const detailResult = await cloudbaseDb.collection('students').doc(id).get()
+    const nextStudent = mapStudentRow(unwrapSingleDocument(detailResult))
+
     setStudents((current) => current.map((student) => (student.id === id ? nextStudent : student)))
-    return data
+    return nextStudent
   }
 
   const deleteStudent = async (id) => {
-    if (!supabase || !user) throw new Error('当前未登录')
-    const { error } = await supabase.from('students').delete().eq('id', id)
-    if (error) throw error
+    if (!cloudbaseDb || !getCloudbaseUserId(user)) throw new Error('当前未登录')
+    await cloudbaseDb.collection('students').doc(id).remove()
     setStudents((current) => current.filter((student) => student.id !== id))
   }
 
   const importStudents = async (localStudents) => {
-    if (!supabase || !user) throw new Error('当前未登录')
+    const userId = getCloudbaseUserId(user)
+    if (!cloudbaseDb || !userId) throw new Error('当前未登录')
     if (!localStudents.length) return 0
 
     const payload = localStudents.map((student) => ({
-      id: student.id || crypto.randomUUID?.() || Date.now().toString(),
-      user_id: user.id,
+      _id: student.id || crypto.randomUUID?.() || Date.now().toString(),
+      user_id: userId,
       name: student.name,
       grade: student.grade,
       phone: student.phone || '',
       created_at: student.createdAt || new Date().toISOString(),
     }))
 
-    const { error } = await supabase.from('students').upsert(payload)
-    if (error) throw error
+    await Promise.all(
+      payload.map(({ _id, ...student }) => cloudbaseDb.collection('students').doc(_id).set(student))
+    )
+
     await loadStudents()
     return payload.length
   }

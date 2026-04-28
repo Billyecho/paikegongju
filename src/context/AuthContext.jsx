@@ -1,65 +1,126 @@
 import { useEffect, useState } from 'react'
 import { AuthContext } from './authContextValue'
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { cloudbaseAuth, getCloudbaseUserId, isCloudbaseConfigured } from '../lib/cloudbase'
+
+const allowedAccount = (import.meta.env.VITE_ALLOWED_EMAIL || 'gaoshuangquan@outlook.com').trim().toLowerCase()
+
+function normalizeUser(rawUser) {
+  if (!rawUser) return null
+
+  return {
+    ...rawUser,
+    id: getCloudbaseUserId(rawUser),
+    uid: rawUser.uid || rawUser.id || rawUser.username || rawUser.email,
+    email: rawUser.email || '',
+    username: rawUser.username || rawUser.email || '',
+  }
+}
+
+function isAllowedUser(rawUser) {
+  if (!rawUser) return false
+
+  const candidates = [
+    rawUser.email,
+    rawUser.username,
+    rawUser.id,
+    rawUser.uid,
+    rawUser.customUserId,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase())
+
+  return candidates.includes(allowedAccount)
+}
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(isSupabaseConfigured)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(isCloudbaseConfigured)
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) {
+    if (!isCloudbaseConfigured || !cloudbaseAuth) {
       return undefined
     }
 
     let mounted = true
 
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!mounted) return
-      if (error) {
-        console.error('Failed to get Supabase session', error)
+    const refreshAuthState = async () => {
+      try {
+        const [loginState, currentUser] = await Promise.all([
+          cloudbaseAuth.getLoginState(),
+          cloudbaseAuth.getCurrentUser(),
+        ])
+
+        if (!mounted) return
+
+        const nextUser = normalizeUser(loginState?.user ?? currentUser)
+        const acceptedUser = isAllowedUser(nextUser) ? nextUser : null
+
+        setSession(acceptedUser ? loginState ?? { user: acceptedUser } : null)
+        setUser(acceptedUser)
+      } catch (error) {
+        if (!mounted) return
+        console.error('Failed to get CloudBase auth state', error)
+        setSession(null)
+        setUser(null)
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      setSession(data.session ?? null)
-      setLoading(false)
-    })
+    }
+
+    refreshAuthState()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession)
-      setLoading(false)
+    } = cloudbaseAuth.onAuthStateChange(() => {
+      refreshAuthState()
     })
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      subscription?.unsubscribe?.()
     }
   }, [])
 
-  const signInWithPassword = async (email, password) => {
-    if (!supabase) {
-      throw new Error('Supabase 尚未配置')
+  const signInWithPassword = async (identifier, password) => {
+    if (!cloudbaseAuth) {
+      throw new Error('CloudBase 尚未配置')
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const account = identifier.trim()
+    let lastError = null
 
-    if (error) throw error
+    const candidates = account.includes('@')
+      ? [{ username: account, password }, { email: account, password }]
+      : [{ username: account, password }]
+
+    for (const payload of candidates) {
+      try {
+        await cloudbaseAuth.signInWithPassword(payload)
+        return
+      } catch (error) {
+        lastError = error
+      }
+    }
+
+    throw lastError || new Error('登录失败')
   }
 
   const signOut = async () => {
-    if (!supabase) return
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    if (!cloudbaseAuth) return
+    await cloudbaseAuth.signOut()
+    setSession(null)
+    setUser(null)
   }
 
   return (
     <AuthContext.Provider
       value={{
-        isConfigured: isSupabaseConfigured,
+        isConfigured: isCloudbaseConfigured,
         session,
-        user: session?.user ?? null,
+        user,
         loading,
         signInWithPassword,
         signOut,

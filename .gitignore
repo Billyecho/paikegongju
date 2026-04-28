@@ -27,3 +27,4 @@ dist-ssr
 *.sw?
 .claude/
 supabase-*.csv
+cloudbase-dist*.zip
