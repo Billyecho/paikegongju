@@ -32,9 +32,7 @@ VITE_CLOUDBASE_PUBLISHABLE_KEY=
 VITE_ALLOWED_EMAIL=gaoshuangquan@outlook.com
 ```
 
-示例见：
-
-- [D:\文档\claude code\sq7-kechengguanli\.env.example](D:\文档\claude code\sq7-kechengguanli\.env.example)
+示例见：[D:\文档\claude code\sq7-kechengguanli\.env.example](D:\文档\claude code\sq7-kechengguanli\.env.example)
 
 ## CloudBase 控制台准备
 
@@ -93,6 +91,6 @@ src/
 2. `npm run lint`
 3. `npm run build`
 4. 推送到 GitHub
-5. 在 CloudBase 静态网站托管里选择 Git 仓库部署
+5. 在 CloudBase 静态网站托管里重新部署 Git 应用
 
 这样后面更新会比手动上传压缩包省心很多。

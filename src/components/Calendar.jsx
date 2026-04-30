@@ -13,7 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
   subMonths,
-  subWeeks
+  subWeeks,
 } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import {
@@ -23,24 +23,69 @@ import {
   TouchSensor,
   useDroppable,
   useSensor,
-  useSensors
+  useSensors,
 } from '@dnd-kit/core'
 import { useCoursesContext } from '../hooks/useCoursesContext'
 import { useStudentsContext } from '../hooks/useStudentsContext'
 import CourseBlock from './CourseBlock'
 
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8)
+const HALF_HOUR_SLOTS = HOURS.flatMap((hour) => [hour, hour + 0.5])
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+const STUDENT_COLORS = [
+  'bg-blue-500 hover:bg-blue-600',
+  'bg-indigo-500 hover:bg-indigo-600',
+  'bg-violet-500 hover:bg-violet-600',
+  'bg-amber-500 hover:bg-amber-600',
+  'bg-rose-500 hover:bg-rose-600',
+  'bg-cyan-500 hover:bg-cyan-600',
+]
 
-export default function Calendar({ onCourseClick }) {
-  const [view, setView] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'day' : 'week'))
-  const [currentDate, setCurrentDate] = useState(new Date())
+function formatTimeRange(course) {
+  if (!course?.startTime || !course?.endTime) return ''
+
+  const start = new Date(course.startTime)
+  const end = new Date(course.endTime)
+  const startLabel = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+  const endLabel = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+
+  return `${startLabel} - ${endLabel}`
+}
+
+function getStudentColorClass(course, studentName) {
+  if (course.status === 'completed') {
+    return 'bg-emerald-500 hover:bg-emerald-600'
+  }
+
+  const seed = course.studentId || studentName || course.subject || ''
+  const hash = [...seed].reduce((total, char) => total + char.charCodeAt(0), 0)
+  return STUDENT_COLORS[hash % STUDENT_COLORS.length]
+}
+
+function formatSlotLabel(slot) {
+  const hour = Math.floor(slot)
+  const minute = slot % 1 === 0.5 ? '30' : '00'
+  return `${hour}:${minute}`
+}
+
+function getSlotOffset(slot, hourHeight) {
+  return (slot - 8) * hourHeight
+}
+
+export default function Calendar({
+  onCourseClick,
+  view,
+  currentDate,
+  onViewChange,
+  onCurrentDateChange,
+}) {
   const [activeCourse, setActiveCourse] = useState(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
   const { courses, updateCourse } = useCoursesContext()
   const { students } = useStudentsContext()
 
   const hourHeight = isMobile ? 38 : 60
+  const halfHourHeight = hourHeight / 2
 
   useEffect(() => {
     const handleResize = () => {
@@ -54,26 +99,26 @@ export default function Calendar({ onCourseClick }) {
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
-      activationConstraint: { distance: 8 }
+      activationConstraint: { distance: 8 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 120, tolerance: 14 }
+      activationConstraint: { delay: 120, tolerance: 14 },
     })
   )
 
   const handlePrev = () => {
-    if (view === 'week') setCurrentDate(subWeeks(currentDate, 1))
-    else if (view === 'day') setCurrentDate(addDays(currentDate, -1))
-    else setCurrentDate(subMonths(currentDate, 1))
+    if (view === 'week') onCurrentDateChange(subWeeks(currentDate, 1))
+    else if (view === 'day') onCurrentDateChange(addDays(currentDate, -1))
+    else onCurrentDateChange(subMonths(currentDate, 1))
   }
 
   const handleNext = () => {
-    if (view === 'week') setCurrentDate(addWeeks(currentDate, 1))
-    else if (view === 'day') setCurrentDate(addDays(currentDate, 1))
-    else setCurrentDate(addMonths(currentDate, 1))
+    if (view === 'week') onCurrentDateChange(addWeeks(currentDate, 1))
+    else if (view === 'day') onCurrentDateChange(addDays(currentDate, 1))
+    else onCurrentDateChange(addMonths(currentDate, 1))
   }
 
-  const handleToday = () => setCurrentDate(new Date())
+  const handleToday = () => onCurrentDateChange(new Date())
 
   const handleDragStart = (event) => {
     const course = courses.find((item) => item.id === event.active.id)
@@ -87,15 +132,18 @@ export default function Calendar({ onCourseClick }) {
     const course = courses.find((item) => item.id === event.active.id)
     if (!course) return
 
-    const [newDateStr, newHourStr] = String(event.over.id).split('|')
+    const [newDateStr, newSlotStr] = String(event.over.id).split('|')
     const [year, month, day] = newDateStr.split('-').map(Number)
     const originalStart = new Date(course.startTime)
     const originalEnd = new Date(course.endTime)
     const duration = originalEnd.getTime() - originalStart.getTime()
     const nextStart = new Date(year, month - 1, day)
 
-    if (newHourStr !== undefined) {
-      nextStart.setHours(Number(newHourStr), 0, 0, 0)
+    if (newSlotStr !== undefined) {
+      const slot = Number(newSlotStr)
+      const nextHour = Math.floor(slot)
+      const nextMinute = slot % 1 === 0.5 ? 30 : 0
+      nextStart.setHours(nextHour, nextMinute, 0, 0)
     } else {
       nextStart.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0)
     }
@@ -105,8 +153,9 @@ export default function Calendar({ onCourseClick }) {
     try {
       await updateCourse(course.id, {
         startTime: nextStart.toISOString(),
-        endTime: nextEnd.toISOString()
+        endTime: nextEnd.toISOString(),
       })
+      onCurrentDateChange(nextStart)
     } catch (error) {
       alert(error.message || '拖动更新课程失败')
     }
@@ -131,15 +180,15 @@ export default function Calendar({ onCourseClick }) {
     return format(currentDate, 'yyyy年M月', { locale: zhCN })
   }
 
+  const overlayStudentName = activeCourse ? getStudentName(activeCourse.studentId) : ''
+
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex h-full flex-col bg-slate-50">
         <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-3 sm:justify-start sm:gap-4">
-              <h2 className="text-base font-semibold text-slate-800 sm:text-lg">
-                {getHeaderText()}
-              </h2>
+              <h2 className="text-base font-semibold text-slate-800 sm:text-lg">{getHeaderText()}</h2>
               <button
                 onClick={handleToday}
                 className="rounded-md bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
@@ -153,15 +202,13 @@ export default function Calendar({ onCourseClick }) {
                 {[
                   { key: 'day', label: '日' },
                   { key: 'week', label: '周' },
-                  { key: 'month', label: '月' }
+                  { key: 'month', label: '月' },
                 ].map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setView(item.key)}
+                    onClick={() => onViewChange(item.key)}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                      view === item.key
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-800'
+                      view === item.key ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
                     }`}
                   >
                     {item.label}
@@ -199,6 +246,7 @@ export default function Calendar({ onCourseClick }) {
               onCourseClick={onCourseClick}
               getStudentName={getStudentName}
               hourHeight={hourHeight}
+              halfHourHeight={halfHourHeight}
               isMobile={isMobile}
             />
           )}
@@ -209,6 +257,7 @@ export default function Calendar({ onCourseClick }) {
               onCourseClick={onCourseClick}
               getStudentName={getStudentName}
               hourHeight={hourHeight}
+              halfHourHeight={halfHourHeight}
               isMobile={isMobile}
             />
           )}
@@ -217,18 +266,22 @@ export default function Calendar({ onCourseClick }) {
               currentDate={currentDate}
               courses={courses}
               onCourseClick={onCourseClick}
+              getStudentName={getStudentName}
             />
           )}
         </div>
 
         <DragOverlay>
           {activeCourse && (
-            <div className={`rounded-lg px-3 py-2 text-sm font-medium text-white shadow-xl ${
-              activeCourse.status === 'completed'
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
-                : 'bg-gradient-to-r from-blue-500 to-indigo-600'
-            }`}>
-              {activeCourse.subject}
+            <div
+              className={`rounded-lg px-3 py-2 text-sm font-medium text-white shadow-xl ${
+                activeCourse.status === 'completed'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
+                  : 'bg-gradient-to-r from-blue-500 to-indigo-600'
+              }`}
+            >
+              <div className="truncate">{overlayStudentName}</div>
+              <div className="mt-0.5 text-xs opacity-90">{formatTimeRange(activeCourse)}</div>
             </div>
           )}
         </DragOverlay>
@@ -237,7 +290,7 @@ export default function Calendar({ onCourseClick }) {
   )
 }
 
-function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHeight, isMobile }) {
+function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHeight, halfHourHeight, isMobile }) {
   const weekStart = startOfWeek(currentDate, { locale: zhCN, weekStartsOn: 1 })
   const weekEnd = endOfWeek(currentDate, { locale: zhCN, weekStartsOn: 1 })
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
@@ -258,12 +311,8 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
 
     if (dayIndex === -1) return null
 
-    const startHour = start.getHours()
-    const startMinute = start.getMinutes()
-    const endHour = end.getHours()
-    const endMinute = end.getMinutes()
-    const top = (startHour - 8) * hourHeight + (startMinute / 60) * hourHeight
-    const height = (endHour - startHour) * hourHeight + ((endMinute - startMinute) / 60) * hourHeight
+    const top = getSlotOffset(start.getHours() + start.getMinutes() / 60, hourHeight)
+    const height = (end.getTime() - start.getTime()) / (1000 * 60 * 60) * hourHeight
 
     return { dayIndex, top, height }
   }
@@ -271,19 +320,25 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
   return (
     <div className={isMobile ? 'min-w-0' : 'min-w-[680px] md:min-w-[800px]'}>
       <div className="sticky top-0 z-10 flex border-b border-slate-200 bg-white shadow-sm">
-        <div className={`${isMobile ? 'w-12' : 'w-16'} shrink-0`} />
+        <div className={`${isMobile ? 'w-14' : 'w-20'} shrink-0`} />
         {weekDays.map((day, index) => {
           const isToday = isSameDay(day, today)
 
           return (
             <div
               key={index}
-              className={`min-w-0 flex-1 border-l border-slate-100 ${isMobile ? 'py-2' : 'py-3'} text-center ${isToday ? 'bg-blue-50' : ''}`}
+              className={`min-w-0 flex-1 border-l border-slate-100 text-center ${isMobile ? 'py-2' : 'py-3'} ${
+                isToday ? 'bg-blue-50' : ''
+              }`}
             >
               <div className={`${isMobile ? 'text-[11px]' : 'text-xs'} font-medium tracking-wide text-slate-500`}>
                 {format(day, 'EEE', { locale: zhCN })}
               </div>
-              <div className={`${isMobile ? 'mt-0.5 text-lg' : 'mt-1 text-xl'} font-bold ${isToday ? 'text-blue-600' : 'text-slate-800'}`}>
+              <div
+                className={`${isMobile ? 'mt-0.5 text-lg' : 'mt-1 text-xl'} font-bold ${
+                  isToday ? 'text-blue-600' : 'text-slate-800'
+                }`}
+              >
                 {format(day, 'd')}
               </div>
             </div>
@@ -292,15 +347,21 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
       </div>
 
       <div className="relative bg-white">
-        <div className={`absolute left-0 z-10 ${isMobile ? 'w-12' : 'w-16'} bg-white`}>
-          {HOURS.map((hour) => (
-            <div key={hour} className={`flex items-start justify-end ${isMobile ? 'pr-2' : 'pr-3'} pt-1`} style={{ height: hourHeight }}>
-              <span className={`${isMobile ? 'text-[11px]' : 'text-xs'} font-medium text-slate-400`}>{hour}:00</span>
+        <div className={`absolute left-0 z-10 ${isMobile ? 'w-14' : 'w-20'} bg-white`}>
+          {HALF_HOUR_SLOTS.map((slot) => (
+            <div
+              key={slot}
+              className={`flex items-start justify-end ${isMobile ? 'pr-2' : 'pr-3'} pt-1`}
+              style={{ height: halfHourHeight }}
+            >
+              <span className={`${isMobile ? 'text-[11px]' : 'text-xs'} font-semibold text-slate-500`}>
+                {formatSlotLabel(slot)}
+              </span>
             </div>
           ))}
         </div>
 
-        <div className={`flex ${isMobile ? 'ml-12' : 'ml-16'}`}>
+        <div className={`flex ${isMobile ? 'ml-14' : 'ml-20'}`}>
           {weekDays.map((day, dayIndex) => {
             const dateStr = format(day, 'yyyy-MM-dd')
             const dayCourses = coursesForWeek.filter((course) => isSameDay(new Date(course.startTime), day))
@@ -311,12 +372,14 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
                 className="relative flex-1 border-l border-slate-100"
                 style={{ height: HOURS.length * hourHeight }}
               >
-                {HOURS.map((hour) => (
+                {HALF_HOUR_SLOTS.map((slot) => (
                   <DroppableTimeSlot
-                    key={hour}
-                    id={`${dateStr}|${hour}`}
-                    className="absolute left-0 right-0 border-t border-slate-100 transition-colors hover:bg-blue-50/60"
-                    style={{ top: (hour - 8) * hourHeight, height: hourHeight }}
+                    key={slot}
+                    id={`${dateStr}|${slot}`}
+                    className={`absolute left-0 right-0 transition-colors hover:bg-blue-50/60 ${
+                      slot % 1 === 0 ? 'border-t border-slate-100' : 'border-t border-slate-100/70'
+                    }`}
+                    style={{ top: getSlotOffset(slot, hourHeight), height: halfHourHeight }}
                   />
                 ))}
 
@@ -334,7 +397,7 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
                         top: pos.top,
                         height: Math.max(pos.height, isMobile ? 26 : 30),
                         left: isMobile ? 2 : 4,
-                        right: isMobile ? 2 : 4
+                        right: isMobile ? 2 : 4,
                       }}
                       onClick={() => onCourseClick(course)}
                     />
@@ -349,7 +412,7 @@ function WeekView({ currentDate, courses, onCourseClick, getStudentName, hourHei
   )
 }
 
-function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeight, isMobile }) {
+function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeight, halfHourHeight, isMobile }) {
   const today = new Date()
 
   const dayCourses = courses
@@ -361,12 +424,8 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeig
 
     const start = new Date(course.startTime)
     const end = new Date(course.endTime)
-    const startHour = start.getHours()
-    const startMinute = start.getMinutes()
-    const endHour = end.getHours()
-    const endMinute = end.getMinutes()
-    const top = (startHour - 8) * hourHeight + (startMinute / 60) * hourHeight
-    const height = (endHour - startHour) * hourHeight + ((endMinute - startMinute) / 60) * hourHeight
+    const top = getSlotOffset(start.getHours() + start.getMinutes() / 60, hourHeight)
+    const height = (end.getTime() - start.getTime()) / (1000 * 60 * 60) * hourHeight
 
     return { top, height }
   }
@@ -376,16 +435,24 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeig
       <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm sm:rounded-2xl">
         <div className={`border-b border-slate-100 px-3 py-3 sm:px-6 sm:py-4 ${isSameDay(currentDate, today) ? 'bg-blue-50' : ''}`}>
           <div className="flex items-center gap-2.5 sm:gap-4">
-            <div className={`flex h-9 w-9 items-center justify-center rounded-lg sm:h-12 sm:w-12 sm:rounded-xl ${
-              isSameDay(currentDate, today) ? 'bg-blue-500' : 'bg-slate-100'
-            }`}>
-              <span className={`text-base font-bold sm:text-lg ${isSameDay(currentDate, today) ? 'text-white' : 'text-slate-600'}`}>
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-lg sm:h-12 sm:w-12 sm:rounded-xl ${
+                isSameDay(currentDate, today) ? 'bg-blue-500' : 'bg-slate-100'
+              }`}
+            >
+              <span
+                className={`text-base font-bold sm:text-lg ${
+                  isSameDay(currentDate, today) ? 'text-white' : 'text-slate-600'
+                }`}
+              >
                 {format(currentDate, 'd')}
               </span>
             </div>
             <div>
               <div className="text-xs text-slate-500 sm:text-sm">{format(currentDate, 'EEEE', { locale: zhCN })}</div>
-              <div className="text-base font-bold text-slate-800 sm:text-xl">{format(currentDate, 'M月d日', { locale: zhCN })}</div>
+              <div className="text-base font-bold text-slate-800 sm:text-xl">
+                {format(currentDate, 'M月d日', { locale: zhCN })}
+              </div>
             </div>
             <div className="ml-auto text-right">
               <div className="text-xs text-slate-500 sm:text-sm">{dayCourses.length} 节课</div>
@@ -394,21 +461,23 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeig
         </div>
 
         <div className="relative" style={{ height: HOURS.length * hourHeight }}>
-          <div className="absolute left-0 w-14 border-r border-slate-100 bg-slate-50 sm:w-20">
-            {HOURS.map((hour) => (
-              <div key={hour} className="flex items-start justify-end pr-3 pt-1" style={{ height: hourHeight }}>
-                <span className="text-xs font-medium text-slate-400">{hour}:00</span>
+          <div className="absolute left-0 w-16 border-r border-slate-100 bg-slate-50 sm:w-24">
+            {HALF_HOUR_SLOTS.map((slot) => (
+              <div key={slot} className="flex items-start justify-end pr-3 pt-1" style={{ height: halfHourHeight }}>
+                <span className="text-xs font-semibold text-slate-500">{formatSlotLabel(slot)}</span>
               </div>
             ))}
           </div>
 
-          <div className="relative ml-14 sm:ml-20">
-            {HOURS.map((hour) => (
+          <div className="relative ml-16 sm:ml-24">
+            {HALF_HOUR_SLOTS.map((slot) => (
               <DroppableTimeSlot
-                key={hour}
-                id={`${format(currentDate, 'yyyy-MM-dd')}|${hour}`}
-                className="absolute left-0 right-0 border-t border-slate-100 transition-colors hover:bg-blue-50/60"
-                style={{ top: (hour - 8) * hourHeight, height: hourHeight }}
+                key={slot}
+                id={`${format(currentDate, 'yyyy-MM-dd')}|${slot}`}
+                className={`absolute left-0 right-0 transition-colors hover:bg-blue-50/60 ${
+                  slot % 1 === 0 ? 'border-t border-slate-100' : 'border-t border-slate-100/70'
+                }`}
+                style={{ top: getSlotOffset(slot, hourHeight), height: halfHourHeight }}
               />
             ))}
 
@@ -434,7 +503,7 @@ function DayView({ currentDate, courses, onCourseClick, getStudentName, hourHeig
   )
 }
 
-function MonthView({ currentDate, courses, onCourseClick }) {
+function MonthView({ currentDate, courses, onCourseClick, getStudentName }) {
   const today = new Date()
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -471,26 +540,31 @@ function MonthView({ currentDate, courses, onCourseClick }) {
                   isCurrentMonth ? 'bg-white' : 'bg-slate-50'
                 } ${isToday ? 'bg-blue-50/50' : ''}`}
               >
-                <div className={`mb-1 text-sm font-medium ${
-                  isToday ? 'text-blue-600' : isCurrentMonth ? 'text-slate-800' : 'text-slate-400'
-                }`}>
+                <div
+                  className={`mb-1 text-sm font-medium ${
+                    isToday ? 'text-blue-600' : isCurrentMonth ? 'text-slate-800' : 'text-slate-400'
+                  }`}
+                >
                   {format(day, 'd')}
                 </div>
                 <div className="space-y-1">
-                  {dayCourses.slice(0, 3).map((course) => (
-                    <div
-                      key={course.id}
-                      onClick={() => onCourseClick(course)}
-                      className={`cursor-pointer truncate rounded px-1 py-1 text-[10px] text-white transition-colors sm:px-1.5 sm:text-xs ${
-                        course.status === 'completed' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-500 hover:bg-blue-600'
-                      }`}
-                    >
-                      {course.subject}
-                    </div>
-                  ))}
-                  {dayCourses.length > 3 && (
-                    <div className="text-xs text-slate-500">+{dayCourses.length - 3} 更多</div>
-                  )}
+                  {dayCourses.slice(0, 3).map((course) => {
+                    const studentName = getStudentName(course.studentId)
+
+                    return (
+                      <div
+                        key={course.id}
+                        onClick={() => onCourseClick(course)}
+                        className={`cursor-pointer truncate rounded px-1 py-1 text-[10px] text-white transition-colors sm:px-1.5 sm:text-xs ${getStudentColorClass(
+                          course,
+                          studentName
+                        )}`}
+                      >
+                        {studentName}
+                      </div>
+                    )
+                  })}
+                  {dayCourses.length > 3 && <div className="text-xs text-slate-500">+{dayCourses.length - 3} 更多</div>}
                 </div>
               </div>
             )
@@ -504,12 +578,5 @@ function MonthView({ currentDate, courses, onCourseClick }) {
 function DroppableTimeSlot({ id, className, style }) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
-  return (
-    <div
-      ref={setNodeRef}
-      data-date={id}
-      className={`${className} ${isOver ? 'bg-blue-100/70' : ''}`}
-      style={style}
-    />
-  )
+  return <div ref={setNodeRef} data-date={id} className={`${className} ${isOver ? 'bg-blue-100/70' : ''}`} style={style} />
 }
